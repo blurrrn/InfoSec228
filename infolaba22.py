@@ -2,21 +2,19 @@
 # -*- coding: utf-8 -*-
 
 from pathlib import Path
-import getpass, sys
+import getpass, sys, os
 
 MAGIC = "MAGIC"
 BLOCKED = "BLOCKED"
 
-def xor_hash(text):
-    data = text.encode("utf-8")
+def xor_hash(s):
+    b = s.encode("utf-8")
     h = 0
-    for i in range(0, len(data), 2):
-        b1 = data[i]
-        b2 = data[i+1] if i+1 < len(data) else 0
-        h ^= (b1 << 8) | b2
+    for i in range(0, len(b), 2):
+        h ^= (b[i] << 8) | (b[i+1] if i+1 < len(b) else 0)
     return h
 
-def check_complexity(p):
+def strong(p):
     if len(p) < 6: return False
     has = [
         any('a' <= c <= 'z' for c in p),
@@ -27,41 +25,46 @@ def check_complexity(p):
     ]
     return sum(has) >= 5
 
-path = input("Укажите путь к файлу пароля: ").strip()
+os.system('cls' if os.name == 'nt' else 'clear')
+print("="*40)
+print("   ПРОСТАЯ ПАРОЛЬНАЯ СИСТЕМА")
+print("="*40)
+
+path = input("Введите путь к файлу пароля: ").strip()
 if not path:
-    print("Не указан путь."); sys.exit()
+    print("❌ Не указан путь."); sys.exit()
 f = Path(path)
 
 if not f.exists():
-    print("Файл не найден. Создайте файл с текстом MAGIC.")
+    print("\n⚠️  Файл не найден.")
+    print("Создайте файл с текстом MAGIC и запустите снова.")
     sys.exit()
 
 try:
     content = f.read_text(encoding="utf-8").strip()
-except Exception as e:
-    print("Ошибка чтения файла:", e)
-    sys.exit()
+except:
+    print("Ошибка чтения файла."); sys.exit()
 
 if content == MAGIC:
-    print("Первый запуск. Установите пароль.")
+    print("\n🔑 Первый запуск системы.")
     p = getpass.getpass("Введите новый пароль: ")
-    if not check_complexity(p):
-        print("Пароль не соответствует требованиям.")
+    if not strong(p):
+        print("❌ Пароль слишком простой! Используйте разные символы.")
         sys.exit()
     f.write_text(str(xor_hash(p)), encoding="utf-8")
-    print("Пароль сохранён.")
+    print("✅ Пароль сохранён! Перезапустите программу.")
 elif content == BLOCKED:
-    print("Система заблокирована.")
+    print("\n🚫 Система заблокирована. Обратитесь к администратору.")
 else:
     try:
-        stored = int(content)
+        saved = int(content)
     except:
-        print("Некорректное содержимое файла.")
-        sys.exit()
+        print("❌ Файл повреждён."); sys.exit()
     for i in range(3, 0, -1):
-        p = getpass.getpass(f"Введите пароль (осталось {i} попыток): ")
-        if xor_hash(p) == stored:
-            print("Доступ разрешён."); sys.exit()
-        print("Неверный пароль.")
+        p = getpass.getpass(f"Введите пароль ({i} попыток): ")
+        if xor_hash(p) == saved:
+            print("\n✅ Доступ разрешён! Добро пожаловать.")
+            sys.exit()
+        print("❌ Неверный пароль.\n")
     f.write_text(BLOCKED, encoding="utf-8")
-    print("Система заблокирована.")
+    print("🚫 Три ошибки. Система заблоки
