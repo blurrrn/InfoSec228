@@ -1,129 +1,133 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-import argparse
-from pathlib import Path
 import sys
-import getpass
+from pathlib import Path
 
-MAGIC_TOKEN = "MAGIC"
-BLOCKED_TOKEN = "BLOCKED"
-MIN_LENGTH = 6
-REQUIRED_CATEGORY_COUNT = 5
+magic = "hello"
+block = "STOP"
 
-
-def xor_hash_from_bytes(data: bytes) -> int:
-    result = 0
-    n = len(data)
+def hash_from_password(password: str) -> int:
+    data = password.encode("utf-8")
+    h = 0
     i = 0
+    n = len(data)
     while i < n:
         b1 = data[i]
         b2 = data[i + 1] if (i + 1) < n else 0
-        word = (b1 << 8) | b2
-        result ^= word
+        num = (b1 << 8) | b2
+        h ^= num
         i += 2
-    return result
+    return h
 
+def check_password_complexity(password: str) -> bool:
+    if len(password) < 6:
+        return False
 
-def hash_from_text(text: str, encoding: str = "utf-8") -> int:
-    b = text.encode(encoding)
-    return xor_hash_from_bytes(b)
+    has_latin_lower = False
+    has_latin_upper = False
+    has_cyrillic_lower = False
+    has_cyrillic_upper = False
+    has_digit_or_sign = False
 
-
-def check_password_complexity(password: str) -> (bool, str):
-    if len(password) < MIN_LENGTH:
-        return False, f"Пароль слишком короткий (нужно >= {MIN_LENGTH} символов)."
-
-    has_latin_lower = any('a' <= ch <= 'z' for ch in password)
-    has_latin_upper = any('A' <= ch <= 'Z' for ch in password)
-    has_cyrillic_lower = any((0x0400 <= ord(ch) <= 0x04FF) and ch.islower() for ch in password)
-    has_cyrillic_upper = any((0x0400 <= ord(ch) <= 0x04FF) and ch.isupper() for ch in password)
-    has_digit_or_sign = any(ch.isdigit() or (not ch.isalnum()) for ch in password)
+    for ch in password:
+        #латиница
+        if 'a' <= ch <= 'z':
+            has_latin_lower = True
+        elif 'A' <= ch <= 'Z':
+            has_latin_upper = True
+        #кириллица
+        elif '\u0430' <= ch <= '\u044f':  #а–я
+            has_cyrillic_lower = True
+        elif '\u0410' <= ch <= '\u042f':  #А–Я
+            has_cyrillic_upper = True
+        #цифры или прочие знаки
+        elif ch.isdigit() or (not ch.isalnum()):
+            has_digit_or_sign = True
 
     count = sum([has_latin_lower, has_latin_upper,
-                 has_cyrillic_lower, has_cyrillic_upper,
-                 has_digit_or_sign])
+                 has_cyrillic_lower, has_cyrillic_upper, has_digit_or_sign])
+    return count == 5
 
-    if count < REQUIRED_CATEGORY_COUNT:
-        return False, (
-            "Пароль не содержит достаточного числа категорий символов.\n"
-            "Требуется сочетание: латиница (ниж/верх), кириллица (ниж/верх), цифры/знаки — "
-            f"не менее {REQUIRED_CATEGORY_COUNT} из этих категорий."
-        )
-
-    return True, "OK"
-
-
-def read_password_file(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="ignore").strip()
-
-
-def write_password_file(path: Path, text: str):
-    path.write_text(text, encoding="utf-8")
+def ask(prompt: str) -> str:
+    try:
+        return input(prompt)
+    except EOFError:
+        return ""
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Простая парольная система (учебное задание).")
-    parser.add_argument("file", nargs="?", help="Путь к файлу пароля (hash-файл).")
-    args = parser.parse_args()
-
-    if args.file:
-        file_path = Path(args.file)
+    #получение пути к файлу
+    if len(sys.argv) >= 2:
+        pwd_path = Path(sys.argv[1])
     else:
-        raw = input("Укажите путь к файлу пароля (например C:\\\\... или /home/...): ").strip()
-        if raw == "":
-            print("Путь не указан. Завершение.")
-            sys.exit(1)
-        file_path = Path(raw)
+        user_input = ask("Укажите путь к файлу: ").strip()
+        if not user_input:
+            print("Путь не указан. Завершение работы...")
+            return
+        pwd_path = Path(user_input)
 
-    if not file_path.exists():
-        print(f"Файл пароля не найден: {file_path}")
-        print("По условию задания программа завершает работу при отсутствии файла пароля.")
-        print("Создайте файл с текстом 'MAGIC' в нём, чтобы выполнить первый запуск.")
-        sys.exit(1)
+    if not pwd_path.exists():
+        print(f"Файл не найден по указанному пути: {pwd_path}")
+        print("завершение работы...")
+        return
 
+    # читаем содержимое файла как текст
+    content = pwd_path.read_text(encoding="utf-8").strip()
+
+    if content == magic:
+        print("создание пароля...")
+        # new_pass = ask("Введите новый пароль: ")
+        # if not check_password_complexity(new_pass):
+        #     print(f"Пароль не прошёл проверку сложности. Требуется минимум 6 символов "
+        #           "и разнообразие символов (латиница, кириллица, регистр, цифры/знаки)")
+        #     return
+        # new_hash = hash_from_password(new_pass)
+        # pwd_path.write_text(str(new_hash), encoding="utf-8")
+        # print("Пароль установлен и его хэш сохранён в файл.")
+        #
+        # return
+        while True:
+            new_pass = ask("Введите новый пароль: ")
+            if not new_pass:
+                print("Пустой пароль не допускается.")
+                continue
+
+            if check_password_complexity(new_pass):
+                new_hash = hash_from_password(new_pass)
+                pwd_path.write_text(str(new_hash), encoding="utf-8")
+                print("Пароль установлен и хэш сохранён в файл.")
+                break
+            else:
+                print(f"Пароль не прошёл проверку сложности. Требуется минимум 6 символов "
+                      "и разнообразие символов (латиница, кириллица, регистр, цифры/знаки).")
+                print("Попробуйте ещё раз.")
+        return
+
+    if content == block:
+        print("Доступ заблокирован.")
+        return
+
+    #ожидается что в файле хранится хэш (число)
     try:
-        content = read_password_file(file_path)
-    except Exception as e:
-        print("Ошибка чтения файла:", e)
-        sys.exit(1)
+        stored_hash = int(content)
+    except ValueError:
+        print("Содержимое файла  не распознано")
+        print("Завершение работы...")
+        return
 
-    if content == MAGIC_TOKEN:
-        print("Первый запуск: файл содержит магическое слово. Установите новый пароль.")
-        new_pass = getpass.getpass("Введите новый пароль: ")
 
-        ok, msg = check_password_complexity(new_pass)
-        if not ok:
-            print("Ошибка сложности пароля:", msg)
-            sys.exit(1)
-
-        h = hash_from_text(new_pass)
-        write_password_file(file_path, str(h))
-        print("Пароль установлен — хеш записан в файл. Запуск завершён успешно.")
-
-    elif content == BLOCKED_TOKEN:
-        print("Система заблокирована (в файле стоит метка BLOCKED). Обратитесь к администратору.")
-        sys.exit(1)
-
-    else:
-        try:
-            stored_hash = int(content)
-        except ValueError:
-            print("Файл пароля содержит некорректные данные (не MAGIC, не BLOCKED и не число).")
-            sys.exit(1)
-
-        attempts = 3
-        while attempts > 0:
-            attempt_pass = getpass.getpass("Введите пароль: ")
-            if hash_from_text(attempt_pass) == stored_hash:
-                print("Доступ разрешён — хеш совпал. Продолжаем работу.")
-                return
+    attempts = 3
+    while attempts > 0:
+        attempt_pass = ask("Введите пароль: ")
+        computed = hash_from_password(attempt_pass)
+        if computed == stored_hash:
+            print("Доступ разрешён")
+            return
+        else:
             attempts -= 1
             print(f"Неверный пароль. Осталось попыток: {attempts}")
 
-        write_password_file(file_path, BLOCKED_TOKEN)
-        print("Превышено число попыток. Файл помечен как BLOCKED. Программа завершает работу.")
-        sys.exit(1)
+    # вышли из цикла и тогда блокируем
+    pwd_path.write_text(block, encoding="utf-8")
+    print("Превышено число попыток. Программа заблокирована")
 
 
 if __name__ == "__main__":
