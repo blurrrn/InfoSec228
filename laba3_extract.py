@@ -1,5 +1,5 @@
 def decode_message(container_path, output_path):
-    with open(container_path, 'r', encoding='utf-8') as f:
+    with open(container_path, 'r', encoding='windows-1251') as f:
         lines = [line.rstrip('\n') for line in f.readlines()]
 
     bits = []
@@ -28,3 +28,4 @@ if __name__ == '__main__':
     output = input("Путь для извлеченного сообщения: ")
     decode_message(container, output)
     print("Сообщение извлечено!")
+
