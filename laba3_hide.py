@@ -6,7 +6,7 @@ def encode_message(container_path, message_path, output_path):
     for byte in message:
         bits.extend(f'{byte:08b}')
 
-    with open(container_path, 'r', encoding='utf-8') as f:
+    with open(container_path, 'r', encoding='windows-1251') as f:
         lines = f.readlines()
 
     if len(bits) > len(lines):
@@ -19,7 +19,7 @@ def encode_message(container_path, message_path, output_path):
             line += ' '
         result.append(line)
 
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, 'w', encoding='windows-1251') as f:
         f.write('\n'.join(result))
 
 
@@ -29,4 +29,5 @@ if __name__ == '__main__':
     output = input("Путь для результата: ")
     encode_message(container, message, output)
     print("Сообщение скрыто!")
+
 
