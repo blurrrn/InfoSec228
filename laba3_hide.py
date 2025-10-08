@@ -5,7 +5,6 @@ def encode_message(container_path, message_path, output_path):
     bits = []
     for byte in message:
         bits.extend(f'{byte:08b}')
-    bits.extend('00000000')
 
     with open(container_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
@@ -30,3 +29,4 @@ if __name__ == '__main__':
     output = input("Путь для результата: ")
     encode_message(container, message, output)
     print("Сообщение скрыто!")
+
